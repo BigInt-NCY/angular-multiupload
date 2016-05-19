@@ -71,7 +71,7 @@
         }
     };
     angular.module("multiUpload", [ "ngFileUpload" ]);
-    angular.module("multiUpload").directive("upload", [ function() {
+    angular.module("multiUpload").directive("upload", [ function($templateCache) {
         return {
             restrict: "E",
             scope: {
@@ -88,7 +88,7 @@
             },
             transclude: true,
             replace: true,
-            templateProvider: $templateCache.get("upload/directives/upload.directive.html"),
+            templateUrl: "directives/templates/upload.directive.html",
             link: function(scope, element, attrs) {
                 scope.dropable = "dropable" in attrs;
                 scope.orderable = "orderable" in attrs;

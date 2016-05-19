@@ -80,7 +80,7 @@ var allowed_rules = {
 angular.module('multiUpload', ['ngFileUpload']);
 
 angular.module('multiUpload')
-.directive('upload', [function(){
+.directive('upload', [function($templateCache){
 	return {
 		restrict: 'E',
 		scope: {
@@ -99,7 +99,7 @@ angular.module('multiUpload')
 		},
 		transclude: true,
 		replace: true,
-		templateProvider: $templateCache.get('upload/directives/upload.directive.html'),
+		templateUrl: 'directives/templates/upload.directive.html',
 		link: function(scope, element, attrs) {
 
 			scope.dropable = 'dropable' in attrs;
