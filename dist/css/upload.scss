@@ -1,0 +1,281 @@
+$color-primary-normal: #ff5252;
+$color-primary-dark: #48c9b0;
+$color-secondary-lighter: #ecf0f1;
+$color-secondary-normal: #bdc3c7;
+$color-secondary-dark: #979797;
+$color-secondary-darker: #1d1d1b;
+$file-height: 50px;
+
+.upload {
+	background-color: $color-secondary-lighter;
+	border: 1px solid $color-secondary-dark;
+	border-bottom: 0;
+	box-sizing: border-box;
+	display: block;
+	margin: 10px 0;
+	min-height: $file-height;
+
+	.topinfo {
+		border-bottom: 1px solid $color-secondary-dark;
+		box-sizing: border-box;
+		color: $color-secondary-dark;
+		height: $file-height;
+		line-height: $file-height;
+		text-align: center;
+
+		p {
+			margin: 0;
+			padding: 0;
+		}
+	}
+
+	ul {
+		box-sizing: border-box;
+		display: block;
+		height: 100%;
+		margin: 0;
+		padding: 0;
+
+		li {
+			list-style: none;
+		}
+
+	}
+
+	.file {
+		align-items: center;
+		border-bottom: 1px solid $color-secondary-dark;
+		display: flex;
+		flex-direction: row;
+		height: $file-height;
+		justify-content: space-between;
+		line-height: $file-height;
+
+		&:nth-last-child(1) {
+			border: 0;
+		}
+
+		.name {
+			height: 100%;
+			overflow: hidden;
+			padding: 0 10px;
+			text-align: left;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			width: 300px;
+		}
+
+		.size {
+			height: 100%;
+			overflow: hidden;
+			padding: 0 10px;
+			text-align: right;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			width: 100px;
+		}
+
+		.progression,
+		.error {
+			box-sizing: border-box;
+			width: 70%;
+		}
+
+		.progression {
+			position: relative;
+
+			progress {
+				background-color: $color-secondary-normal;
+				border: 0 none;
+				border-radius: 10px;
+				box-sizing: border-box;
+				height: $file-height / 2;
+				left: 50%;
+				position: absolute;
+				top: 50%;
+				transform: translate(-50%, -50%);
+				width: 100%;
+
+				&::-moz-progress-bar {
+					background: $color-primary-dark;
+					border-radius: 10px;
+				}
+			}
+
+			span {
+				display: block;
+				left: 50%;
+				position: absolute;
+				top: 50%;
+				transform: translate(-50%, -50%);
+			}
+		}
+
+		.error {
+			text-align: center;
+			white-space: nowrap;
+		}
+
+		.grip {
+			cursor: pointer;
+			height: 100%;
+			padding: 0 0 0 10px;
+			position: relative;
+			width: 25px;
+
+			.desktop {
+				border-top: 2px solid $color-secondary-normal;
+				cursor: grab;
+				display: block;
+				height: 6px;
+				left: 50%;
+				margin-left: 5px;
+				padding-top: 2px;
+				position: absolute;
+				top: 50%;
+				transform: translate(-50%, -50%);
+				width: 25px;
+
+				&::before,
+				&::after {
+					border-top: 2px solid $color-secondary-normal;
+					content: "";
+					display: block;
+					padding-top: 2px;
+				}
+
+				&:active,
+				&:active::before,
+				&:active::after {
+					cursor: grabbing;
+				}
+
+				&:hover,
+				&:hover::before,
+				&:hover::after {
+					border-color: $color-primary-normal;
+				}
+
+				@media all and (max-width: 1024px) {
+					display: none;
+				}
+			}
+
+			.mobile {
+				display: flex;
+				flex-direction: column;
+				height: 100%;
+				width: 25px;
+
+				.up {
+					height: 50%;
+					position: relative;
+					width: 100%;
+
+					&::after {
+						content: "↑";
+						display: block;
+						font-size: 20px;
+						left: 50%;
+						position: absolute;
+						top: 50%;
+						transform: translate(-50%, -50%);
+					}
+
+					&:active,
+					&:hover,
+					&:focus {
+						background-color: $color-secondary-dark;
+					}
+				}
+
+				.down {
+					height: 50%;
+					position: relative;
+					width: 100%;
+
+					&::after {
+						content: "↓";
+						display: block;
+						font-size: 20px;
+						left: 50%;
+						position: absolute;
+						top: 50%;
+						transform: translate(-50%, -50%);
+					}
+
+					&:active,
+					&:hover,
+					&:focus {
+						background-color: $color-secondary-dark;
+					}
+				}
+
+				@media all and (min-width: 1024px) {
+					display: none;
+				}
+			}
+		}
+
+		.thumbnail {
+			height: 100%;
+			overflow: hidden;
+			padding: 0 0 0 10px;
+			text-align: center;
+			width: 50px;
+
+			img {
+				height: 50px;
+				max-height: 50px;
+				max-width: 50px;
+				width: 50px;
+			}
+		}
+
+		.resize {
+			cursor: pointer;
+			height: 100%;
+			padding: 0 0 0 10px;
+			width: 35px;
+
+			&::after {
+				content: "↔";
+				display: block;
+				font-size: 25px;
+				text-align: center;
+				transform: rotate(120deg);
+			}
+
+			&:active,
+			&:hover,
+			&:focus {
+				background-color: $color-secondary-dark;
+			}
+		}
+
+		.delete {
+			cursor: pointer;
+			height: 100%;
+			padding: 0 10px;
+			width: 25px;
+
+			&::after {
+				color: $color-primary-normal;
+				content: "X";
+				font-size: 18px;
+				font-weight: bold;
+				text-align: center;
+			}
+
+			&:active,
+			&:hover,
+			&:focus {
+				background-color: $color-secondary-dark;
+			}
+		}
+	}
+}
+
+.error {
+	color: $color-primary-normal;
+}

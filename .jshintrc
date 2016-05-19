@@ -1,0 +1,20 @@
+{
+						// more options here if you want to override JSHint defaults
+	"freeze"  : true,   // prohibits overwriting prototypes of native objects such as Array, Date and so on.
+	"browser" : true,   // This option defines globals exposed by modern browsers (FileRead, document).
+	"eqnull"  : true,   // This option suppresses warnings about == null comparisons.
+	"es3"     : false,  // This option tells JSHint that your code needs to adhere to ECMAScript 3 specification -- We do not support legacy js environment such as IE6/7/8.
+	"forin"   : true,   // This option requires all for in loops to filter objects items.
+	"eqeqeq"  : true,   // This options prohibits the use of == and != in favor of === and !==.
+	"latedef" : true,   // This option prohibits the use of a variable before it was defined
+	"nonbsp"  : true,   // This option warns about "non-breaking whitespace" characters
+	"noempty" : true,   // This option warns when you have an empty block in your code
+	"noarg"   : true,   // This option prohibits the use of arguments.caller and arguments.callee
+	"quotmark": true,   // This option enforces the consistency of quotation marks used throughout your code
+	"unused"  : "vars", // This option warns when you define and never use your variables (set to vars to not check function parameters
+	"trailing": true,   // This option makes it an error to leave a trailing whitespace in your code
+	"globals" : {
+		"console": true,
+		"angular": true
+	}
+}

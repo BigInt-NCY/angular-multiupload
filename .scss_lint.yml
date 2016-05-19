@@ -1,0 +1,17 @@
+linters:
+    Indentation:
+        allow_non_nested_indentation: true
+        character: tab
+        width: 1
+    QualifyingElement:
+        allow_element_with_attribute: true
+    HexLength:
+        style: long
+    SelectorDepth:
+        max_depth: 10
+    NestingDepth:
+        max_depth: 10
+    StringQuotes:
+        enabled: false
+    UrlQuotes:
+        enabled: false
