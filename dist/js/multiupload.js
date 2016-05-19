@@ -70,7 +70,7 @@
             return true;
         }
     };
-    angular.module("multiUpload", [ "ng-file-upload" ]);
+    angular.module("multiUpload", [ "ngFileUpload" ]);
     angular.module("multiUpload").directive("upload", [ function() {
         return {
             restrict: "E",
@@ -516,15 +516,6 @@
         };
     } ]);
 })();
-
-/**
- * AngularJS multi upload directives.
- * @author  Alexis Destrez <alexis.destrez@bigint.fr>
- * @version <%= pkg.version %>
- */
-var angularMultiUpload = angular.module("multiUpload", [ "ng-file-upload" ]);
-
-angularMultiUpload = angularMultiUpload;
 
 angular.module("multiUpload").run([ "$templateCache", function($templateCache) {
     "use strict";
