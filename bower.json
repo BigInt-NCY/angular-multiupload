@@ -1,6 +1,6 @@
 {
-	"name": "ng-multi-upload",
-	"version": "0.1.0",
+	"name": "angular-multiupload",
+	"version": "0.1.1",
 	"main": "dist/js/multiupload.min.js",
 	"ignore": [
 		"src/",
