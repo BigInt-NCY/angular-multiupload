@@ -77,6 +77,10 @@ var allowed_rules = {
 	}
 };
 
+angular.module('multiUpload', [
+	'ng-file-upload'
+]);
+
 angular.module('multiUpload')
 .directive('upload', [function(){
 	return {
