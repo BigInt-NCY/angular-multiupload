@@ -1,4 +1,88 @@
-angularMultiUpload.directive('upload', [function(){
+(function() {
+'use strict';
+
+var allowed_rules = {
+	crop: function(file, files, config, update_file) {
+		if (file && update_file)
+			file.cropable = true;
+		return true;
+	},
+	count: function(file, files, config, update_file) {
+		var failed = false;
+		var ret = true;
+		var file_length = file && update_file ? files.length + 1 : files.length;
+		var limit = config.limit;
+		var min_limit;
+		var max_limit;
+		var int_limit = parseInt(limit, 10);
+		var split_limit = limit.split(',');
+
+		if (limit === '' || limit === '0') {
+			min_limit = max_limit = 0;
+		} else if (limit === '*' || limit === ',' || limit === '.') {
+			min_limit = max_limit = -1;
+		} else if (split_limit.length === 2) {
+			min_limit = split_limit[0] === '' ? -1 : parseInt(split_limit[0]);
+			max_limit = split_limit[1] === '' ? -1 : parseInt(split_limit[1]);
+			if (min_limit === 'NaN' || max_limit === 'NaN') {
+				failed = true;
+				console.error('Bad limit value for count : ' + limit);
+			}
+		} else if (int_limit !== 'NaN') {
+			min_limit = max_limit = int_limit;
+		} else {
+			failed = true;
+			console.error('Unhandled limit value for count : ' + limit);
+		}
+
+		if (min_limit !== undefined && max_limit !== undefined) {
+			if (min_limit > max_limit && max_limit !== -1) {
+				failed = true;
+				console.error('Count minimum limit must be inferior to maximum limit : ' + min_limit + '>' + max_limit);
+			}
+			if (file_length > max_limit && max_limit !== -1) {
+				failed = true;
+			} else if (file_length < min_limit && min_limit !== -1) {
+				ret = false;
+			}
+		} else {
+			failed = true;
+		}
+		if (failed) {
+			if (file && update_file) {
+				file.error.failed = true;
+				file.error.reason += ' ' + config.onError;
+			}
+			ret = false;
+		}
+		return ret;
+	},
+	thumbnail: function(file, files, config, update_file) {
+		if (file && update_file)
+			file.thumbnailable = true;
+		return true;
+	},
+	validator: function(file, files, config, update_file) {
+		if (!file)
+			return true;
+		var errors = config.limit(file);
+		if (errors.length > 0) {
+			if (file && update_file) {
+				file.error.failed = true;
+				file.error.reason = [config.onError].concat(errors);
+			}
+			return false;
+		}
+		return true;
+	}
+};
+
+angular.module('multiUpload', [
+	'ng-file-upload'
+]);
+
+angular.module('multiUpload')
+.directive('upload', [function(){
 	return {
 		restrict: 'E',
 		scope: {
@@ -36,82 +120,6 @@ angularMultiUpload.directive('upload', [function(){
 
 			$scope.simultaneousCur = 0;
 			$scope.allowedExtensions = '';
-
-			var allowed_rules = {
-				crop: function(file, files, config, update_file) {
-					if (file && update_file)
-						file.cropable = true;
-					return true;
-				},
-				count: function(file, files, config, update_file) {
-					var failed = false;
-					var ret = true;
-					var file_length = file && update_file ? files.length + 1 : files.length;
-					var limit = config.limit;
-					var min_limit;
-					var max_limit;
-					var int_limit = parseInt(limit, 10);
-					var split_limit = limit.split(',');
-			
-					if (limit === '' || limit === '0') {
-						min_limit = max_limit = 0;
-					} else if (limit === '*' || limit === ',' || limit === '.') {
-						min_limit = max_limit = -1;
-					} else if (split_limit.length === 2) {
-						min_limit = split_limit[0] === '' ? -1 : parseInt(split_limit[0]);
-						max_limit = split_limit[1] === '' ? -1 : parseInt(split_limit[1]);
-						if (min_limit === 'NaN' || max_limit === 'NaN') {
-							failed = true;
-							console.error('Bad limit value for count : ' + limit);
-						}
-					} else if (int_limit !== 'NaN') {
-						min_limit = max_limit = int_limit;
-					} else {
-						failed = true;
-						console.error('Unhandled limit value for count : ' + limit);
-					}
-			
-					if (min_limit !== undefined && max_limit !== undefined) {
-						if (min_limit > max_limit && max_limit !== -1) {
-							failed = true;
-							console.error('Count minimum limit must be inferior to maximum limit : ' + min_limit + '>' + max_limit);
-						}
-						if (file_length > max_limit && max_limit !== -1) {
-							failed = true;
-						} else if (file_length < min_limit && min_limit !== -1) {
-							ret = false;
-						}
-					} else {
-						failed = true;
-					}
-					if (failed) {
-						if (file && update_file) {
-							file.error.failed = true;
-							file.error.reason += ' ' + config.onError;
-						}
-						ret = false;
-					}
-					return ret;
-				},
-				thumbnail: function(file, files, config, update_file) {
-					if (file && update_file)
-						file.thumbnailable = true;
-					return true;
-				},
-				validator: function(file, files, config, update_file) {
-					if (!file)
-						return true;
-					var errors = config.limit(file);
-					if (errors.length > 0) {
-						if (file && update_file) {
-							file.error.failed = true;
-							file.error.reason = [config.onError].concat(errors);
-						}
-						return false;
-					}
-					return true;
-				}
-			};
 
 			var rules = {};
 			this.addRule = function(name, configs) {
@@ -429,3 +437,5 @@ angularMultiUpload.directive('upload', [function(){
 		}]
 	};
 }]);
+
+})();

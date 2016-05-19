@@ -124,14 +124,14 @@ module.exports = function(grunt) {
 					compress: false,
 					beautify: true
 				},
-				src: ['<%= dirs.src %>/js/multiupload.js', '<%= dirs.src %>/js/**/*.js', '<%= dirs.dist %>/js/templates.js'],
+				src: ['<%= dirs.src %>/js/directives/upload.directive.js', '<%= dirs.src %>/js/**/*.js', '<%= dirs.dist %>/js/templates.js'],
 				dest: '<%= dirs.dist %>/js/multiupload.js',
 			},
 			prod: {
 				options: {
 					expand: true
 				},
-				src: ['<%= dirs.src %>/js/multiupload.js', '<%= dirs.src %>/js/**/*.js', '<%= dirs.dist %>/js/templates.js'],
+				src: ['<%= dirs.src %>/js/directives/upload.directive.js', '<%= dirs.src %>/js/**/*.js', '<%= dirs.dist %>/js/templates.js'],
 				dest: '<%= dirs.dist %>/js/multiupload.min.js',
 			}
 		},
