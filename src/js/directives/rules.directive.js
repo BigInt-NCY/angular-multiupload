@@ -1,8 +1,4 @@
-(function() {
-'use strict';
-
-angular.module('multiUpload')
-.directive('rules', [function(){
+angularMultiUpload.directive('rules', [function(){
 	return {
 		restrict: 'E',
 		scope: {
@@ -26,5 +22,3 @@ angular.module('multiUpload')
 		}],
 	};
 }]);
-
-})();

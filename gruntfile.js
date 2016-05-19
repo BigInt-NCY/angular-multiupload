@@ -117,17 +117,21 @@ module.exports = function(grunt) {
 		uglify: {
 			dev: {
 				options: {
+					expand: true,
 					sourceMap: true,
 					mangle: false,
 					preserveComments: true,
 					compress: false,
 					beautify: true
 				},
-				src: ['<%= dirs.src %>/js/**/*.js', '<%= dirs.dist %>/js/templates.js'],
+				src: ['<%= dirs.src %>/js/multiupload.js', '<%= dirs.src %>/js/**/*.js', '<%= dirs.dist %>/js/templates.js'],
 				dest: '<%= dirs.dist %>/js/multiupload.js',
 			},
 			prod: {
-				src: ['<%= dirs.src %>/js/**/*.js', '<%= dirs.dist %>/js/templates.js'],
+				options: {
+					expand: true
+				},
+				src: ['<%= dirs.src %>/js/multiupload.js', '<%= dirs.src %>/js/**/*.js', '<%= dirs.dist %>/js/templates.js'],
 				dest: '<%= dirs.dist %>/js/multiupload.min.js',
 			}
 		},

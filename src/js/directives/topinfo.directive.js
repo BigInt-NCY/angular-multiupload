@@ -1,8 +1,4 @@
-(function() {
-'use strict';
-
-angular.module('multiUpload')
-.directive('topinfo', [function(){
+angularMultiUpload.directive('topinfo', [function(){
 	return {
 		restrict: 'E',
 		scope: {
@@ -11,5 +7,3 @@ angular.module('multiUpload')
 		replace: true,
 	};
 }]);
-
-})();
