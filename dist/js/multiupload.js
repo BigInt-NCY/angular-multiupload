@@ -75,7 +75,8 @@
         return {
             restrict: "E",
             scope: {
-                url: "@",
+                url: "=",
+                multipartName: "=",
                 method: "@",
                 files: "=filesList",
                 validRules: "=",
@@ -340,11 +341,11 @@
                         if ($scope.simultaneousCur < $scope.simultaneousMax && file.progress.status === $scope.PENDING && !file.error.failed) {
                             updateProgress(file, $scope.TRANSFERING, 0);
                             $scope.simultaneousCur++;
+                            var data = {};
+                            data[$scope.multipartName ? angular.isFunction($scope.multipartName) ? $scope.multipartName(file) : $scope.multipartName : "key"] = file.source;
                             file._upload = Upload.upload({
-                                url: $scope.url,
-                                data: {
-                                    key: file.source
-                                },
+                                url: angular.isFunction($scope.url) ? $scope.url(file) : $scope.url,
+                                data: data,
                                 method: $scope.method
                             });
                             file._upload.then(function(resp) {
@@ -519,6 +520,6 @@
 
 angular.module("multiUpload").run([ "$templateCache", function($templateCache) {
     "use strict";
-    $templateCache.put("directives/templates/upload.directive.html", '<div class="upload"\r' + "\n" + '	ngf-drop ngf-drop-disabled="!dropable"\r' + "\n" + '	ngf-multiple="allowMultiple"\r' + "\n" + '	ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\r' + "\n" + '	ngf-fix-orientation="true" ngf-stop-propagation="true"\r' + "\n" + "	>\r" + "\n" + '	<div class="topinfo" ng-transclude\r' + "\n" + '		ngf-select ngf-select-disabled="!selectable"\r' + "\n" + '		ngf-multiple="allowMultiple" ngf-accept="\'{{ allowedExtensions }}\'"\r' + "\n" + '		ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\r' + "\n" + '		ngf-fix-orientation="true" ngf-stop-propagation="true"\r' + "\n" + "		></div>\r" + "\n" + "	<ul>\r" + "\n" + '		<li class="file" movable="orderable" data-index="$index" ng-class="{\'error\': file.error.failed}" ng-repeat="file in files">\r' + "\n" + '			<div ng-show="orderable" class="grip">\r' + "\n" + '				<div class="desktop"></div>\r' + "\n" + '				<div class="mobile">\r' + "\n" + '					<div class="up" ng-click="reorder($index, $index - 1, $event)"></div>\r' + "\n" + '					<div class="down" ng-click="reorder($index, $index + 1, $event)"></div>\r' + "\n" + "				</div>\r" + "\n" + "			</div>\r" + "\n" + '			<div ng-show="file.thumbnailable" class="thumbnail">\r' + "\n" + '				<img src="{{ file.thumbnail }}" alt="thumbnail {{ file.name }}" />\r' + "\n" + "			</div>\r" + "\n" + '			<div ng-show="file.cropable" class="resize" ng-click="crop($event, file)"></div>\r' + "\n" + '			<div class="name">{{ file.name }}</div>\r' + "\n" + '			<div class="size">{{ fileRenderSizeCB(file.size) }}</div>\r' + "\n" + '			<div class="error" ng-show="file.error.failed" title="{{ file.error.reason }}">{{ file.error.reason }}</div>\r' + "\n" + '			<div class="progression">\r' + "\n" + '				<progress ng-show="!file.error.failed" min="0" value="{{ file.progress.value }}" max="100"></progress>\r' + "\n" + "				<span>{{ file.progress.message }}</span>\r" + "\n" + "			</div>\r" + "\n" + '			<div class="delete" ng-click="cancel($index, $event)"></div>\r' + "\n" + "		</li>\r" + "\n" + "	</ul>\r" + "\n" + "</div>\r" + "\n");
+    $templateCache.put("directives/templates/upload.directive.html", '<div class="upload"\n' + '	ngf-drop ngf-drop-disabled="!dropable"\n' + '	ngf-multiple="allowMultiple"\n' + '	ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\n' + '	ngf-fix-orientation="true" ngf-stop-propagation="true"\n' + "	>\n" + '	<div class="topinfo" ng-transclude\n' + '		ngf-select ngf-select-disabled="!selectable"\n' + '		ngf-multiple="allowMultiple" ngf-accept="\'{{ allowedExtensions }}\'"\n' + '		ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\n' + '		ngf-fix-orientation="true" ngf-stop-propagation="true"\n' + "		></div>\n" + "	<ul>\n" + '		<li class="file" movable="orderable" data-index="$index" ng-class="{\'error\': file.error.failed}" ng-repeat="file in files">\n' + '			<div ng-show="orderable" class="grip">\n' + '				<div class="desktop"></div>\n' + '				<div class="mobile">\n' + '					<div class="up" ng-click="reorder($index, $index - 1, $event)"></div>\n' + '					<div class="down" ng-click="reorder($index, $index + 1, $event)"></div>\n' + "				</div>\n" + "			</div>\n" + '			<div ng-show="file.thumbnailable" class="thumbnail">\n' + '				<img src="{{ file.thumbnail }}" alt="thumbnail {{ file.name }}" />\n' + "			</div>\n" + '			<div ng-show="file.cropable" class="resize" ng-click="crop($event, file)"></div>\n' + '			<div class="name">{{ file.name }}</div>\n' + '			<div class="size">{{ fileRenderSizeCB(file.size) }}</div>\n' + '			<div class="error" ng-show="file.error.failed" title="{{ file.error.reason }}">{{ file.error.reason }}</div>\n' + '			<div class="progression">\n' + '				<progress ng-show="!file.error.failed" min="0" value="{{ file.progress.value }}" max="100"></progress>\n' + "				<span>{{ file.progress.message }}</span>\n" + "			</div>\n" + '			<div class="delete" ng-click="cancel($index, $event)"></div>\n' + "		</li>\n" + "	</ul>\n" + "</div>\n");
 } ]);
 //# sourceMappingURL=multiupload.js.map

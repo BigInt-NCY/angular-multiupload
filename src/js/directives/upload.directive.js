@@ -84,7 +84,8 @@ angular.module('multiUpload')
 	return {
 		restrict: 'E',
 		scope: {
-			url:                '@',
+			url:                '=',
+			multipartName:      '=',
 			method:             '@',
 			files:              '=filesList',
 			validRules:         '=',
@@ -378,10 +379,13 @@ angular.module('multiUpload')
 					if ($scope.simultaneousCur < $scope.simultaneousMax && file.progress.status === $scope.PENDING && !file.error.failed) {
 						updateProgress(file, $scope.TRANSFERING, 0);
 						$scope.simultaneousCur++;
+						var data = {};
+						data[$scope.multipartName? (angular.isFunction($scope.multipartName)? $scope.multipartName(file): $scope.multipartName): 'key'] = file.source;
+
 						file._upload = Upload.upload({
-							url: $scope.url,
-							data: {key: file.source},
-							method: $scope.method,
+							url: angular.isFunction($scope.url)? $scope.url(file): $scope.url,
+							data: data,
+							method: $scope.method
 						});
 						file._upload.then(function (resp) {
 							updateProgress(file, $scope.COMPLETE, 100);
