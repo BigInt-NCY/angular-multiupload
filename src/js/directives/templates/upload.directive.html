@@ -11,24 +11,24 @@
 		ngf-fix-orientation="true" ngf-stop-propagation="true"
 		></div>
 	<ul>
-		<li class="file" movable="orderable" data-index="$index" ng-class="{'error': file.error.failed}" ng-repeat="file in files">
-			<div ng-show="orderable" class="grip">
+		<li class="file" movable="orderable" data-index="$index" ng-class="{'error': file.error}" ng-repeat="file in files">
+			<div ng-show="orderable && files.length > 1" class="grip">
 				<div class="desktop"></div>
 				<div class="mobile">
 					<div class="up" ng-click="reorder($index, $index - 1, $event)"></div>
 					<div class="down" ng-click="reorder($index, $index + 1, $event)"></div>
 				</div>
 			</div>
-			<div ng-show="file.thumbnailable" class="thumbnail">
+			<!-- <div ng-show="file.thumbnailable" class="thumbnail">
 				<img src="{{ file.thumbnail }}" alt="thumbnail {{ file.name }}" />
-			</div>
-			<div ng-show="file.cropable" class="resize" ng-click="crop($event, file)"></div>
+			</div> -->
+			<!-- <div ng-show="file.cropable" class="resize" ng-click="crop($event, file)"></div> -->
 			<div class="name">{{ file.name }}</div>
-			<div class="size">{{ fileRenderSizeCB(file.size) }}</div>
-			<div class="error" ng-show="file.error.failed" title="{{ file.error.reason }}">{{ file.error.reason }}</div>
-			<div class="progression">
-				<progress ng-show="!file.error.failed" min="0" value="{{ file.progress.value }}" max="100"></progress>
-				<span>{{ file.progress.message }}</span>
+			<!-- <div class="size">{{ fileRenderSizeCB(file.size) }}</div> -->
+			<div class="error" ng-show="file.error" title="{{ file.error }}">{{ file.error }}</div>
+			<div class="progression" ng-show="!file.error" >
+				<progress min="0" value="{{ file.progress.value }}" max="100"></progress>
+				<span>{{ fileOnProgressCB(file.name, file.progress.status, file.progress.value) }}</span>
 			</div>
 			<div class="delete" ng-click="cancel($index, $event)"></div>
 		</li>

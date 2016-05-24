@@ -167,20 +167,12 @@ $file-height: 50px;
 				height: 100%;
 				width: 25px;
 
-				.up {
+				.up,
+				.down {
 					height: 50%;
+					overflow: hidden;
 					position: relative;
 					width: 100%;
-
-					&::after {
-						content: "↑";
-						display: block;
-						font-size: 20px;
-						left: 50%;
-						position: absolute;
-						top: 50%;
-						transform: translate(-50%, -50%);
-					}
 
 					&:active,
 					&:hover,
@@ -189,26 +181,24 @@ $file-height: 50px;
 					}
 				}
 
-				.down {
-					height: 50%;
-					position: relative;
-					width: 100%;
+				.up::after {
+					content: "↑";
+					display: block;
+					font-size: 20px;
+					left: 50%;
+					position: absolute;
+					top: 50%;
+					transform: translate(-50%, -50%);
+				}
 
-					&::after {
-						content: "↓";
-						display: block;
-						font-size: 20px;
-						left: 50%;
-						position: absolute;
-						top: 50%;
-						transform: translate(-50%, -50%);
-					}
-
-					&:active,
-					&:hover,
-					&:focus {
-						background-color: $color-secondary-dark;
-					}
+				.down::after {
+					content: "↓";
+					display: block;
+					font-size: 20px;
+					left: 50%;
+					position: absolute;
+					top: 50%;
+					transform: translate(-50%, -50%);
 				}
 
 				@media all and (min-width: 1024px) {

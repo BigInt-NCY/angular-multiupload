@@ -1,15 +1,15 @@
 (function() {
     "use strict";
     var allowed_rules = {
-        crop: function(file, files, config, update_file) {
-            if (file && update_file) file.cropable = true;
+        crop: function(file, files, rule, update_file) {
+            if (file && update_file) file.$cropable = true;
             return true;
         },
-        count: function(file, files, config, update_file) {
+        count: function(file, files, rule, update_file) {
             var failed = false;
             var ret = true;
             var file_length = file && update_file ? files.length + 1 : files.length;
-            var limit = config.limit;
+            var limit = rule.limit;
             var min_limit;
             var max_limit;
             var int_limit = parseInt(limit, 10);
@@ -45,26 +45,22 @@
                 failed = true;
             }
             if (failed) {
-                if (file && update_file) {
-                    file.error.failed = true;
-                    file.error.reason += " " + config.onError;
-                }
+                if (file && update_file) file.error = rule.onError;
+                // TODO
                 ret = false;
             }
             return ret;
         },
-        thumbnail: function(file, files, config, update_file) {
-            if (file && update_file) file.thumbnailable = true;
+        thumbnail: function(file, files, rule, update_file) {
+            if (file && update_file) file.$thumbnailable = true;
             return true;
         },
-        validator: function(file, files, config, update_file) {
+        validator: function(file, files, rule, update_file) {
             if (!file) return true;
-            var errors = config.limit(file);
+            var errors = rule.limit(file);
             if (errors.length > 0) {
-                if (file && update_file) {
-                    file.error.failed = true;
-                    file.error.reason = [ config.onError ].concat(errors);
-                }
+                if (file && update_file) file.error = rule.onError;
+                // TODO
                 return false;
             }
             return true;
@@ -80,6 +76,7 @@
                 method: "@",
                 files: "=filesList",
                 validRules: "=",
+                fileGetFullPathCB: "=fileGetfullpath",
                 fileOnCancelCB: "=fileOncancel",
                 fileRenderSizeCB: "=fileRenderSize",
                 fileOnProgressCB: "=fileOnprogress",
@@ -91,21 +88,43 @@
             replace: true,
             templateUrl: "directives/templates/upload.directive.html",
             link: function(scope, element, attrs) {
+                if (angular.isUndefined(scope.files)) throw "files-list parameter is missing and is required.";
+                if (angular.isUndefined(scope.url)) throw "url parameter is missing and is required.";
                 scope.dropable = "dropable" in attrs;
                 scope.orderable = "orderable" in attrs;
                 scope.selectable = "selectable" in attrs;
                 scope.allowMultiple = "multiple" in attrs;
-                scope.allowDuplicate = !("noDuplicate" in attrs);
+                scope.simultaneousMax = scope.simultaneousMax ? scope.simultaneousMax : 999;
+                scope.fileGetFullPathCB = angular.isFunction(scope.fileGetFullPathCB) ? scope.fileGetFullPathCB : function(path) {
+                    return path;
+                };
+                scope.fileRenderSizeCB = angular.isFunction(scope.fileRenderSizeCB) ? scope.fileRenderSizeCB : function(size) {
+                    return size + "o";
+                };
+                scope.fileOnProgressCB = angular.isFunction(scope.fileOnProgressCB) ? scope.fileOnProgressCB : function(source, status, percentil) {
+                    return status + ": " + percentil + "%";
+                };
             },
             controller: [ "$scope", "Upload", function($scope, Upload) {
-                $scope.PENDING = 1;
-                $scope.TRANSFERING = 2;
-                $scope.COMPLETE = 3;
-                $scope.ERROR = 4;
+                $scope.UPLOAD_PENDING = 1;
+                $scope.UPLOAD_TRANSFERING = 2;
+                $scope.UPLOAD_COMPLETE = 3;
+                $scope.UPLOAD_ERROR = 4;
+                $scope.UPLOAD_OLD = 5;
                 $scope.simultaneousCur = 0;
                 $scope.allowedExtensions = "";
-                var rules = {};
+                // function fileToDataURL(source, callback) {
+                // 	var fileReader = new FileReader();
+                // 	fileReader.onload = function(e) {
+                // 		callback(e.target.result);
+                // 	};
+                // 	fileReader.readAsDataURL(source);
+                // }
+                var rules = null;
                 this.addRule = function(name, configs) {
+                    if (!rules) {
+                        rules = {};
+                    }
                     if (Object.keys(configs).length === 0) {
                         throw "Bad rules declaration : in " + name + " : zero rule defined\n";
                     } else {
@@ -119,37 +138,108 @@
                     }
                     $scope.allowedExtensions += ($scope.allowedExtensions === "" ? "" : ",") + name;
                 };
-                function isFilesFollowingRules(files_list) {
-                    var i;
-                    for (var ruleExts in rules) {
-                        if (rules.hasOwnProperty(ruleExts)) {
-                            var files = $scope.getFilesMatchingRuleExtensions(ruleExts, files_list, false);
-                            for (var rule in rules[ruleExts]) if (rules[ruleExts].hasOwnProperty(rule)) {
-                                if (files.length === 0) {
-                                    if (allowed_rules[rule](null, [], rules[ruleExts][rule], false) !== true) return false;
-                                } else for (i = 0; i < files.length; i++) if (allowed_rules[rule](files[i], files, rules[ruleExts][rule], false) !== true) return false;
-                            }
-                        }
+                function getRulesForFileExtension(file_extension) {
+                    var ret;
+                    if (!rules || Object.keys(rules).length === 0) {
+                        return ret;
                     }
-                    var list = $scope.files;
-                    if (files_list) {
-                        list = files_list;
+                    ret = null;
+                    for (var extensions in rules) if (rules.hasOwnProperty(extensions)) {
+                        var exts = extensions.split(",");
+                        if (exts.indexOf(file_extension) !== -1) ret = rules[extensions];
+                        if (ret !== null) break;
                     }
-                    var nb_respect = 0;
-                    for (i = 0; i < list.length; i++) {
-                        for (var extensions in rules) {
-                            if (rules.hasOwnProperty(extensions)) {
-                                var exts = extensions.split(",");
-                                if (exts.indexOf(list[i].extension) !== -1) {
-                                    nb_respect++;
-                                }
-                            }
-                        }
-                    }
-                    if (nb_respect !== list.length) return false;
-                    return true;
+                    return ret;
                 }
-                $scope.validRules.run = isFilesFollowingRules;
+                function getRuleExtensionsForFileExtension(file_extension) {
+                    var ret;
+                    if (!rules || Object.keys(rules).length === 0) {
+                        return ret;
+                    }
+                    ret = null;
+                    for (var extensions in rules) if (rules.hasOwnProperty(extensions)) {
+                        var exts = extensions.split(",");
+                        if (exts.indexOf(file_extension) !== -1) ret = extensions;
+                        if (ret !== null) break;
+                    }
+                    return ret;
+                }
+                function getFilesMatchingRuleExtensions(rules_extensions, without_errors, files_list) {
+                    without_errors = without_errors ? without_errors : false;
+                    files_list = files_list ? files_list : $scope.files;
+                    if (!rules_extensions) return [];
+                    var exts = rules_extensions.split(",");
+                    var files_to_return = [];
+                    angular.forEach(files_list, function(file) {
+                        if (exts.indexOf(file.$extension) !== -1 && (without_errors && !file.error || !without_errors)) files_to_return.push(file);
+                    });
+                    return files_to_return;
+                }
+                function isFileObservingRules(file, files_list, strict) {
+                    files_list = files_list ? files_list : $scope.files;
+                    strict = strict ? strict : false;
+                    var file_rules_ext = getRuleExtensionsForFileExtension(file.$extension);
+                    file.error = true;
+                    var files_same_ext = getFilesMatchingRuleExtensions(file_rules_ext, true, files_list);
+                    delete file.error;
+                    var rules = getRulesForFileExtension(file.$extension);
+                    var ret = 0;
+                    for (var rule in rules) {
+                        if (rules.hasOwnProperty(rule)) {
+                            if (allowed_rules[rule](file, files_same_ext, rules[rule], true) !== true) {
+                                if (!strict && !file.error) ret = 1; else if (!strict && file.error) ret = -1; else ret = -1;
+                                break;
+                            }
+                        }
+                    }
+                    return ret;
+                }
+                // // TODO function isFilesObservingRules(files_list) {
+                // 	if (!rules)
+                // 		return true;
+                //
+                // 	var i;
+                //
+                // 	for (var ruleExts in rules) {
+                // 		if (rules.hasOwnProperty(ruleExts)) {
+                // 			var files = $scope.getFilesMatchingRuleExtensions(ruleExts, files_list, false);
+                // 			for (var rule in rules[ruleExts])
+                // 				if (rules[ruleExts].hasOwnProperty(rule)) {
+                // 					if (files.length === 0) {
+                // 						if (allowed_rules[rule](null, [], rules[ruleExts][rule], false) !== true)
+                // 							return false;
+                // 					} else
+                // 						for (i = 0; i < files.length; i++)
+                // 							if (allowed_rules[rule](files[i], files, rules[ruleExts][rule], false) !== true)
+                // 								return false;
+                // 				}
+                // 		}
+                // 	}
+                //
+                // 	var list = $scope.files;
+                // 	if (files_list) {
+                // 		list = files_list;
+                // 	}
+                // 	var nb_respect = 0;
+                // 	for (i = 0; i < list.length; i++) {
+                // 		for (var extensions in rules) {
+                // 			if (rules.hasOwnProperty(extensions)) {
+                // 				var exts = extensions.split(',');
+                // 				if (exts.indexOf(list[i].extension) !== -1){
+                // 					nb_respect++;
+                // 				}
+                // 			}
+                // 		}
+                // 	}
+                // 	if (nb_respect !== list.length)
+                // 		return false;
+                //
+                // 	return true;
+                // }
+                //
+                // // TODO factory ou je ne sais quoi, how ?
+                // if ($scope.validRules)
+                // 	$scope.validRules.run = isFilesFollowingRules;
                 $scope.reorder = function(pos_old, pos_new, event) {
                     if (event) event.stopPropagation();
                     if (pos_new < 0 || pos_new >= $scope.files.length) return;
@@ -158,240 +248,118 @@
                     $scope.files[pos_old] = tmp;
                 };
                 this.reorder = $scope.reorder;
-                $scope.getRulesForExtension = function(file_extension) {
-                    var ret;
-                    if (Object.keys(rules).length === 0) {
-                        return ret;
-                    } else {
-                        ret = null;
-                        angular.forEach(rules, function(rule, extensions) {
-                            var exts = extensions.split(",");
-                            if (exts.indexOf(file_extension) !== -1) {
-                                ret = rule;
-                                return;
-                            }
-                            if (ret !== null) {
-                                return;
-                            }
-                        });
-                    }
-                    return ret;
-                };
-                $scope.getRuleExtensionsForFileExtension = function(file_extension) {
-                    var ret;
-                    if (Object.keys(rules).length === 0) {
-                        return ret;
-                    } else {
-                        ret = null;
-                        angular.forEach(rules, function(rule, extensions) {
-                            var exts = extensions.split(",");
-                            if (exts.indexOf(file_extension) !== -1) {
-                                ret = extensions;
-                                return;
-                            }
-                            if (ret !== null) {
-                                return;
-                            }
-                        });
-                    }
-                    return ret;
-                };
-                $scope.getFilesMatchingRuleExtensions = function(rules_extensions, files_list, with_errors) {
-                    var list = $scope.files;
-                    if (files_list) {
-                        list = files_list;
-                    }
-                    if (!rules_extensions) {
-                        return [];
-                    }
-                    var files = [];
-                    var exts = rules_extensions.split(",");
-                    angular.forEach(list, function(file) {
-                        if (exts.indexOf(file.extension) !== -1 && (!with_errors && !file.error.failed || with_errors)) files.push(file);
-                    });
-                    return files;
-                };
-                function fileToDataURL(file, callback) {
-                    var fileReader = new FileReader();
-                    fileReader.onload = function(e) {
-                        callback(e.target.result);
-                    };
-                    fileReader.readAsDataURL(file.source);
-                }
-                $scope.crop = function(event, file) {
-                    event.stopPropagation();
-                    var crop = $scope.getRulesForExtension(file.extension).crop;
-                    fileToDataURL(file, function(drawable) {
-                        crop.limit(drawable, file.crop, function(result) {
-                            if (result === true) {
-                                $scope.thumbnail(file, file.crop.drawable, true);
-                            } else {
-                                $scope.thumbnail(file, file.source);
-                            }
-                        });
-                    });
-                };
-                $scope.thumbnail = function(file, source, drawable) {
-                    if (!file.thumbnailable) {
-                        file.thumbnail = null;
-                        return;
-                    }
-                    if (drawable) {
-                        file.thumbnail = source;
-                        return;
-                    }
-                    var thumb = $scope.getRulesForExtension(file.extension).thumbnail;
-                    if (thumb.limit !== true) {
-                        file.thumbnail = thumb.limit(source);
-                    } else {
-                        fileToDataURL(file, function(drawable) {
-                            file.thumbnail = drawable;
-                        });
-                    }
-                };
+                // TODO
+                $scope.crop = function(event, file) {};
+                // TODO
+                $scope.thumbnail = function(file, source, is_drawable) {};
                 function updateProgress(file, status, value) {
-                    if (value < 0) {
-                        value = 0;
-                    } else if (value > 100) {
-                        value = 100;
-                    }
-                    file.progress.value = value;
-                    file.progress.status = status;
-                    if ($scope.fileOnProgressCB) {
-                        file.progress.message = $scope.fileOnProgressCB(file.source, status, value);
-                    } else {
-                        file.progress.message = value + "%";
-                    }
+                    file.progress = {
+                        value: value,
+                        status: status
+                    };
                 }
-                function isUnique(file) {
-                    for (var i = 0; i < $scope.files.length; i++) {
-                        var efile = $scope.files[i];
-                        if (efile.name === file.name && efile.lastModified === file.lastModified && efile.size === file.size) {
-                            return false;
+                function updateError(file, failure_reason) {
+                    file.error = failure_reason;
+                }
+                function refreshFiles() {
+                    if (!$scope.files.length) return;
+                    angular.forEach($scope.files, function(file) {
+                        if (file.error && file.progress.status !== $scope.UPLOAD_ERROR) if (isFileObservingRules(file) === 0) delete file.error;
+                        if (file.$thumbnailable && !file.$thumbnail) // TODO
+                        $scope.thumbnail(file, file.source);
+                        // if we dont reach limit for simultaneous upload and file is waiting to be uploaded (have a source, have good status, no errors, ...)
+                        if ($scope.simultaneousCur < $scope.simultaneousMax && file.progress.status === $scope.UPLOAD_PENDING && !file.error && file.$source_file) {
+                            updateProgress(file, $scope.UPLOAD_TRANSFERING, 0);
+                            $scope.simultaneousCur++;
+                            var data = {};
+                            data[$scope.multipart ? angular.isFunction(scope.multipartName) ? scope.multipartName(file.name) : scope.multipartName : "key"] = file.$source_file;
+                            // store the promise for cancel upload if we want
+                            file.$upload = Upload.upload({
+                                url: angular.isFunction($scope.multipartName) ? $scope.url(file.name) : $scope.url,
+                                data: data,
+                                method: $scope.method
+                            }).then(function(resp) {
+                                // ON UPLOAD COMPLETE
+                                updateProgress(file, $scope.UPLOAD_COMPLETE, 100);
+                                $scope.simultaneousCur--;
+                            }, function(resp) {
+                                // ON UPLOAD ERROR
+                                updateProgress(file, $scope.UPLOAD_ERROR, 0);
+                                updateError(file, $scope.fileUploadError || "upload error");
+                                $scope.simultaneousCur--;
+                            }, function(evt) {
+                                updateProgress(file, $scope.UPLOAD_TRANSFERING, parseInt(100 * evt.loaded / evt.total));
+                            });
                         }
-                    }
-                    return true;
+                    });
                 }
-                function addToFilesList(files) {
+                function addToFilesList(files, already_uploaded) {
                     if (!files || !files.length) {
                         return;
                     }
                     angular.forEach(files, function(file) {
-                        var extension = file.name.substr((~-file.name.lastIndexOf(".") >>> 0) + 1).toLowerCase();
-                        if (!$scope.allowDuplicate && !isUnique(file)) {
+                        if (!file.name) {
+                            console.warn('add file to files failed because file object does not have "name" key.');
                             return;
                         }
+                        var extension = file.name.substr((~-file.name.lastIndexOf(".") >>> 0) + 1).toLowerCase();
                         var file_obj = {
-                            source: file,
                             name: file.name,
-                            extension: extension,
-                            size: file.size,
-                            type: file.type,
-                            lastModified: file.lastModified,
-                            progress: {
-                                value: 0,
-                                status: $scope.PENDING,
-                                message: ""
-                            },
-                            error: {
-                                failed: true,
-                                reason: []
-                            },
-                            thumbnail: null,
-                            thumbnailable: false,
-                            crop: {
-                                bounds: {
-                                    left: 0,
-                                    right: 0,
-                                    top: 0,
-                                    bottom: 0
-                                },
-                                drawable: null
-                            },
-                            cropable: false,
-                            _upload: null,
-                            upload: {
-                                code: 0,
-                                data: null
-                            }
+                            error: true,
+                            $extension: extension
                         };
+                        if (already_uploaded) {
+                            updateProgress(file_obj, $scope.UPLOAD_OLD, 100);
+                            file_obj.$source_url = $scope.fileGetFullPathCB(file_obj.name);
+                        } else {
+                            updateProgress(file_obj, $scope.UPLOAD_PENDING, 0);
+                            file_obj.$source_file = file;
+                        }
+                        // var file_obj = {
+                        // 	source: file,name: file.name, extension: extension,
+                        // 	size: file.size, type: file.type, lastModified: file.lastModified,
+                        // 	progress: { value: 0, status: $scope.PENDING, message: '' },
+                        // 	error: { failed: true, reason: [] },
+                        // 	thumbnail: null,
+                        // 	thumbnailable: false,
+                        // 	crop: {
+                        // 		bounds: { left: 0, right: 0, top: 0, bottom: 0 },
+                        // 		drawable: null,
+                        // 	},
+                        // 	cropable: false,
+                        // 	_upload: null,
+                        // 	upload: { code: 0, data: null },
+                        // };
                         $scope.files.push(file_obj);
                     });
-                }
-                function uploadFiles() {
-                    if (!$scope.files || !$scope.files.length) {
-                        return;
-                    }
-                    angular.forEach($scope.files, function(file) {
-                        if (file.error.failed) {
-                            var files_tmp = $scope.getFilesMatchingRuleExtensions($scope.getRuleExtensionsForFileExtension(file.extension));
-                            file.error.failed = false;
-                            file.error.reason = [];
-                            var rules = $scope.getRulesForExtension(file.extension);
-                            if (!rules) {
-                                file.error.failed = true;
-                                file.error.reason = $scope.fileExtensionError;
-                            } else {
-                                angular.forEach(rules, function(config, rule) {
-                                    allowed_rules[rule](file, files_tmp, config, true);
-                                });
-                            }
-                            if (file.thumbnailable && !file.thumbnail) $scope.thumbnail(file, file.source);
-                        }
-                        if ($scope.simultaneousCur < $scope.simultaneousMax && file.progress.status === $scope.PENDING && !file.error.failed) {
-                            updateProgress(file, $scope.TRANSFERING, 0);
-                            $scope.simultaneousCur++;
-                            var data = {};
-                            data[$scope.multipartName ? angular.isFunction($scope.multipartName) ? $scope.multipartName(file) : $scope.multipartName : "key"] = file.source;
-                            file._upload = Upload.upload({
-                                url: angular.isFunction($scope.url) ? $scope.url(file) : $scope.url,
-                                data: data,
-                                method: $scope.method
-                            });
-                            file._upload.then(function(resp) {
-                                updateProgress(file, $scope.COMPLETE, 100);
-                                $scope.simultaneousCur--;
-                                file.upload.data = resp.data;
-                                file.upload.code = resp.status;
-                            }, function(resp) {
-                                updateProgress(file, $scope.ERROR, 0);
-                                file.error.failed = true;
-                                file.error.reason = $scope.fileUploadError;
-                                $scope.simultaneousCur--;
-                            }, function(evt) {
-                                updateProgress(file, $scope.TRANSFERING, parseInt(100 * evt.loaded / evt.total));
-                            });
-                        }
-                        if ($scope.simultaneousCur >= $scope.simultaneousMax) {
-                            return;
-                        }
-                    });
+                    refreshFiles();
                 }
                 $scope.onChanges = function($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event) {
                     if (!$newFiles || !$newFiles.length) {
                         return;
                     }
                     addToFilesList($newFiles);
-                    uploadFiles();
                 };
                 $scope.cancel = function(index, event) {
                     if (event) event.stopPropagation();
                     var file = $scope.files[index];
+                    // remove file from list and kill upload if possible
                     $scope.files.splice(index, 1);
-                    if (file.progress.status === $scope.TRANSFERING) {
-                        file._upload.abort();
+                    if (file.progress.status === $scope.UPLOAD_TRANSFERING) {
+                        if (file.$upload) file.$upload.abort();
                     } else {
-                        uploadFiles();
+                        refreshFiles();
                     }
-                    if ($scope.fileOnCancelCB) {
-                        $scope.fileOnCancelCB(file);
-                    }
+                    $scope.fileOnCancelCB(file);
                 };
                 $scope.$watch("simultaneousCur", function() {
                     if ($scope.simultaneousCur < $scope.simultaneousMax) {
-                        uploadFiles();
+                        refreshFiles();
                     }
                 });
+                // remove from files list all files receive from caller and re-add them with wanted attributes
+                var tmp_files = $scope.files.splice(0, $scope.files.length);
+                addToFilesList(tmp_files, true);
             } ]
         };
     } ]);
@@ -520,6 +488,6 @@
 
 angular.module("multiUpload").run([ "$templateCache", function($templateCache) {
     "use strict";
-    $templateCache.put("directives/templates/upload.directive.html", '<div class="upload"\n' + '	ngf-drop ngf-drop-disabled="!dropable"\n' + '	ngf-multiple="allowMultiple"\n' + '	ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\n' + '	ngf-fix-orientation="true" ngf-stop-propagation="true"\n' + "	>\n" + '	<div class="topinfo" ng-transclude\n' + '		ngf-select ngf-select-disabled="!selectable"\n' + '		ngf-multiple="allowMultiple" ngf-accept="\'{{ allowedExtensions }}\'"\n' + '		ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\n' + '		ngf-fix-orientation="true" ngf-stop-propagation="true"\n' + "		></div>\n" + "	<ul>\n" + '		<li class="file" movable="orderable" data-index="$index" ng-class="{\'error\': file.error.failed}" ng-repeat="file in files">\n' + '			<div ng-show="orderable" class="grip">\n' + '				<div class="desktop"></div>\n' + '				<div class="mobile">\n' + '					<div class="up" ng-click="reorder($index, $index - 1, $event)"></div>\n' + '					<div class="down" ng-click="reorder($index, $index + 1, $event)"></div>\n' + "				</div>\n" + "			</div>\n" + '			<div ng-show="file.thumbnailable" class="thumbnail">\n' + '				<img src="{{ file.thumbnail }}" alt="thumbnail {{ file.name }}" />\n' + "			</div>\n" + '			<div ng-show="file.cropable" class="resize" ng-click="crop($event, file)"></div>\n' + '			<div class="name">{{ file.name }}</div>\n' + '			<div class="size">{{ fileRenderSizeCB(file.size) }}</div>\n' + '			<div class="error" ng-show="file.error.failed" title="{{ file.error.reason }}">{{ file.error.reason }}</div>\n' + '			<div class="progression">\n' + '				<progress ng-show="!file.error.failed" min="0" value="{{ file.progress.value }}" max="100"></progress>\n' + "				<span>{{ file.progress.message }}</span>\n" + "			</div>\n" + '			<div class="delete" ng-click="cancel($index, $event)"></div>\n' + "		</li>\n" + "	</ul>\n" + "</div>\n");
+    $templateCache.put("directives/templates/upload.directive.html", '<div class="upload"\r' + "\n" + '	ngf-drop ngf-drop-disabled="!dropable"\r' + "\n" + '	ngf-multiple="allowMultiple"\r' + "\n" + '	ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\r' + "\n" + '	ngf-fix-orientation="true" ngf-stop-propagation="true"\r' + "\n" + "	>\r" + "\n" + '	<div class="topinfo" ng-transclude\r' + "\n" + '		ngf-select ngf-select-disabled="!selectable"\r' + "\n" + '		ngf-multiple="allowMultiple" ngf-accept="\'{{ allowedExtensions }}\'"\r' + "\n" + '		ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\r' + "\n" + '		ngf-fix-orientation="true" ngf-stop-propagation="true"\r' + "\n" + "		></div>\r" + "\n" + "	<ul>\r" + "\n" + '		<li class="file" movable="orderable" data-index="$index" ng-class="{\'error\': file.error}" ng-repeat="file in files">\r' + "\n" + '			<div ng-show="orderable && files.length > 1" class="grip">\r' + "\n" + '				<div class="desktop"></div>\r' + "\n" + '				<div class="mobile">\r' + "\n" + '					<div class="up" ng-click="reorder($index, $index - 1, $event)"></div>\r' + "\n" + '					<div class="down" ng-click="reorder($index, $index + 1, $event)"></div>\r' + "\n" + "				</div>\r" + "\n" + "			</div>\r" + "\n" + '			<!-- <div ng-show="file.thumbnailable" class="thumbnail">\r' + "\n" + '				<img src="{{ file.thumbnail }}" alt="thumbnail {{ file.name }}" />\r' + "\n" + "			</div> -->\r" + "\n" + '			<!-- <div ng-show="file.cropable" class="resize" ng-click="crop($event, file)"></div> -->\r' + "\n" + '			<div class="name">{{ file.name }}</div>\r' + "\n" + '			<!-- <div class="size">{{ fileRenderSizeCB(file.size) }}</div> -->\r' + "\n" + '			<div class="error" ng-show="file.error" title="{{ file.error }}">{{ file.error }}</div>\r' + "\n" + '			<div class="progression" ng-show="!file.error" >\r' + "\n" + '				<progress min="0" value="{{ file.progress.value }}" max="100"></progress>\r' + "\n" + "				<span>{{ fileOnProgressCB(file.name, file.progress.status, file.progress.value) }}</span>\r" + "\n" + "			</div>\r" + "\n" + '			<div class="delete" ng-click="cancel($index, $event)"></div>\r' + "\n" + "		</li>\r" + "\n" + "	</ul>\r" + "\n" + "</div>\r" + "\n");
 } ]);
 //# sourceMappingURL=multiupload.js.map
