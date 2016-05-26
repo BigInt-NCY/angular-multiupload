@@ -109,9 +109,8 @@ angular.module('multiUpload')
 			files:              '=filesList',
 			validRules:         '=',
 
-			fileDownloadLink:    '=?fileDownloadLink',
+			_fileDownloadLink:   '=fileDownloadLink',
 			_fileOnUploadEndCB:  '=fileOnUploadEnd',
-			_fileGetFullpathCB:  '=fileGetfullpath',
 			_fileOnCancelCB:     '=fileOncancel',
 			_fileRenderSizeCB:   '=fileRenderSize',
 			_fileOnProgressCB:   '=fileOnprogress',
@@ -148,10 +147,10 @@ angular.module('multiUpload')
 			$scope.simultaneousMax   = $scope.simultaneousMax ? $scope.simultaneousMax : 999;
 
 			$scope.fileOnUploadEndCB = angular.isFunction($scope._fileOnUploadEndCB) ? $scope._fileOnUploadEndCB : function(file, http_code, response) {};
-			$scope.fileGetFullpathCB = angular.isFunction($scope._fileGetFullpathCB) ? $scope._fileGetFullpathCB : function(path) { return path; };
+			$scope.fileDownloadLink  = angular.isFunction($scope._fileDownloadLink) ? $scope._fileDownloadLink   : function(file) { return file.name; };
 			$scope.fileOnCancelCB    = angular.isFunction($scope._fileOnCancelCB)    ? $scope._fileOnCancelCB    : function(file, http_code, response) {};
 			$scope.fileRenderSizeCB  = angular.isFunction($scope._fileRenderSizeCB)  ? $scope._fileRenderSizeCB  : function(size) { return size + 'o'; };
-			$scope.fileOnProgressCB  = angular.isFunction($scope._fileOnProgressCB)  ? $scope._fileOnProgressCB  : function(source, status, percentil) { return status + ': ' + percentil + '%'; };
+			$scope.fileOnProgressCB  = angular.isFunction($scope._fileOnProgressCB)  ? $scope._fileOnProgressCB  : function(file, status, percentil) { return status + ': ' + percentil + '%'; };
 
 			var rules = null;
 
@@ -345,11 +344,11 @@ angular.module('multiUpload')
 						$scope.simultaneousCur++;
 
 						var data = {};
-						data[$scope.multipartName ? (angular.isFunction($scope.multipartName) ? $scope.multipartName(file.name) : $scope.multipartName) : 'key'] = file.$source_file;
+						data[$scope.multipartName ? (angular.isFunction($scope.multipartName) ? $scope.multipartName(file) : $scope.multipartName) : 'key'] = file.$source_file;
 
 						// store the promise for cancel upload if we want
 						file.$upload = Upload.upload({
-							url: angular.isFunction($scope.url) ? $scope.url(file.name) : $scope.url,
+							url: angular.isFunction($scope.url) ? $scope.url(file) : $scope.url,
 							data: data,
 							method: $scope.method
 						}).then(function (resp) { // ON UPLOAD COMPLETE
@@ -386,7 +385,7 @@ angular.module('multiUpload')
 
 					if (already_uploaded) {
 						updateProgress(file_obj, $scope.UPLOAD_OLD, 100);
-						file_obj.$source_url = $scope.fileGetFullpathCB(file_obj.name);
+						file_obj.$source_url = $scope.fileDownloadLink(file_obj);
 					} else {
 						updateProgress(file_obj, $scope.UPLOAD_PENDING, 0);
 						file_obj.$source_file = file;
