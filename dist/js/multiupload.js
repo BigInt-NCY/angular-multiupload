@@ -54,7 +54,6 @@
             }
             if (failed) {
                 if (file) file.error = rule.onError;
-                // TODO
                 ret = false;
             }
             return ret;
@@ -74,7 +73,6 @@
             var errors = rule.limit(file);
             if (errors.length > 0) {
                 if (file) file.error = rule.onError;
-                // TODO
                 return false;
             }
             return true;
@@ -90,11 +88,12 @@
                 method: "@",
                 files: "=filesList",
                 validRules: "=",
-                fileOnUploadEndCB: "=fileOnUploadEnd",
-                fileGetFullPathCB: "=fileGetfullpath",
-                fileOnCancelCB: "=fileOncancel",
-                fileRenderSizeCB: "=fileRenderSize",
-                fileOnProgressCB: "=fileOnprogress",
+                fileDownloadLink: "=?fileDownloadLink",
+                _fileOnUploadEndCB: "=fileOnUploadEnd",
+                _fileGetFullpathCB: "=fileGetfullpath",
+                _fileOnCancelCB: "=fileOncancel",
+                _fileRenderSizeCB: "=fileRenderSize",
+                _fileOnProgressCB: "=fileOnprogress",
                 fileUploadError: "@",
                 fileExtensionError: "@",
                 simultaneousMax: "@simultaneous"
@@ -109,17 +108,6 @@
                 scope.orderable = "orderable" in attrs;
                 scope.selectable = "selectable" in attrs;
                 scope.allowMultiple = "multiple" in attrs;
-                scope.simultaneousMax = scope.simultaneousMax ? scope.simultaneousMax : 999;
-                scope.fileOnUploadEndCB = angular.isFunction(scope.fileOnUploadEndCB) ? scope.fileOnUploadEndCB : function(file, http_code, response) {};
-                scope.fileGetFullPathCB = angular.isFunction(scope.fileGetFullPathCB) ? scope.fileGetFullPathCB : function(path) {
-                    return path;
-                };
-                scope.fileRenderSizeCB = angular.isFunction(scope.fileRenderSizeCB) ? scope.fileRenderSizeCB : function(size) {
-                    return size + "o";
-                };
-                scope.fileOnProgressCB = angular.isFunction(scope.fileOnProgressCB) ? scope.fileOnProgressCB : function(source, status, percentil) {
-                    return status + ": " + percentil + "%";
-                };
             },
             controller: [ "$scope", "Upload", function($scope, Upload) {
                 $scope.UPLOAD_PENDING = 1;
@@ -129,6 +117,18 @@
                 $scope.UPLOAD_OLD = 5;
                 $scope.simultaneousCur = 0;
                 $scope.allowedExtensions = "";
+                $scope.simultaneousMax = $scope.simultaneousMax ? $scope.simultaneousMax : 999;
+                $scope.fileOnUploadEndCB = angular.isFunction($scope._fileOnUploadEndCB) ? $scope._fileOnUploadEndCB : function(file, http_code, response) {};
+                $scope.fileGetFullpathCB = angular.isFunction($scope._fileGetFullpathCB) ? $scope._fileGetFullpathCB : function(path) {
+                    return path;
+                };
+                $scope.fileOnCancelCB = angular.isFunction($scope._fileOnCancelCB) ? $scope._fileOnCancelCB : function(file, http_code, response) {};
+                $scope.fileRenderSizeCB = angular.isFunction($scope._fileRenderSizeCB) ? $scope._fileRenderSizeCB : function(size) {
+                    return size + "o";
+                };
+                $scope.fileOnProgressCB = angular.isFunction($scope._fileOnProgressCB) ? $scope._fileOnProgressCB : function(source, status, percentil) {
+                    return status + ": " + percentil + "%";
+                };
                 var rules = null;
                 function getRulesForFileExtension(file_extension) {
                     var ret;
@@ -175,6 +175,10 @@
                     var files_same_ext = getFilesMatchingRuleExtensions(file_rules_ext, true, files_list);
                     delete file.error;
                     var file_rules = getRulesForFileExtension(file.$extension);
+                    if (!file_rules) {
+                        file.error = $scope.fileExtensionError;
+                        return -1;
+                    }
                     for (var rule in file_rules) if (file_rules.hasOwnProperty(rule)) if (allowed_rules[rule](file, files_same_ext, file_rules[rule]) !== true) {
                         if (!strict && !file.error) return 1; else if (!strict && file.error) return -1; else return -1;
                     }
@@ -273,6 +277,7 @@
                                 updateError(file, $scope.fileUploadError || "upload error");
                                 $scope.simultaneousCur--;
                             }, function(evt) {
+                                // ON UPLOAD TRANSFER PROGRESS
                                 updateProgress(file, $scope.UPLOAD_TRANSFERING, parseInt(100 * evt.loaded / evt.total));
                             });
                         }
@@ -293,7 +298,7 @@
                         };
                         if (already_uploaded) {
                             updateProgress(file_obj, $scope.UPLOAD_OLD, 100);
-                            file_obj.$source_url = $scope.fileGetFullPathCB(file_obj.name);
+                            file_obj.$source_url = $scope.fileGetFullpathCB(file_obj.name);
                         } else {
                             updateProgress(file_obj, $scope.UPLOAD_PENDING, 0);
                             file_obj.$source_file = file;
@@ -456,6 +461,6 @@
 
 angular.module("multiUpload").run([ "$templateCache", function($templateCache) {
     "use strict";
-    $templateCache.put("directives/templates/upload.directive.html", '<div class="upload"\r' + "\n" + '	ngf-drop ngf-drop-disabled="!dropable"\r' + "\n" + '	ngf-multiple="allowMultiple"\r' + "\n" + '	ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\r' + "\n" + '	ngf-fix-orientation="true" ngf-stop-propagation="true"\r' + "\n" + "	>\r" + "\n" + '	<div class="topinfo" ng-transclude\r' + "\n" + '		ngf-select ngf-select-disabled="!selectable"\r' + "\n" + '		ngf-multiple="allowMultiple" ngf-accept="\'{{ allowedExtensions }}\'"\r' + "\n" + '		ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\r' + "\n" + '		ngf-fix-orientation="true" ngf-stop-propagation="true"\r' + "\n" + "		></div>\r" + "\n" + "	<ul>\r" + "\n" + '		<li class="file" movable="orderable" data-index="$index" ng-class="{\'error\': file.error}" ng-repeat="file in files">\r' + "\n" + '			<div ng-show="orderable && files.length > 1" class="grip">\r' + "\n" + '				<div class="desktop"></div>\r' + "\n" + '				<div class="mobile">\r' + "\n" + '					<div class="up" ng-click="reorder($index, $index - 1, $event)"></div>\r' + "\n" + '					<div class="down" ng-click="reorder($index, $index + 1, $event)"></div>\r' + "\n" + "				</div>\r" + "\n" + "			</div>\r" + "\n" + '			<div ng-show="file.$thumbnailable" class="thumbnail">\r' + "\n" + '				<img src="{{ file.$thumbnail }}" alt="thumbnail {{ file.name }}" />\r' + "\n" + "			</div>\r" + "\n" + '			<div ng-show="file.$cropable" class="resize" ng-click="crop($event, file)"></div>\r' + "\n" + '			<div class="name">{{ file.name }}</div>\r' + "\n" + '			<!-- <div class="size">{{ fileRenderSizeCB(file.size) }}</div> -->\r' + "\n" + '			<div class="error" ng-show="file.error" title="{{ file.error }}">{{ file.error }}</div>\r' + "\n" + '			<div class="progression" ng-show="!file.error" >\r' + "\n" + '				<progress min="0" value="{{ file.progress.value }}" max="100"></progress>\r' + "\n" + "				<span>{{ fileOnProgressCB(file.name, file.progress.status, file.progress.value) }}</span>\r" + "\n" + "			</div>\r" + "\n" + '			<div class="delete" ng-click="cancel($index, $event)"></div>\r' + "\n" + "		</li>\r" + "\n" + "	</ul>\r" + "\n" + "</div>\r" + "\n");
+    $templateCache.put("directives/templates/upload.directive.html", '<div class="upload"\r' + "\n" + '	ngf-drop ngf-drop-disabled="!dropable"\r' + "\n" + '	ngf-multiple="allowMultiple"\r' + "\n" + '	ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\r' + "\n" + '	ngf-fix-orientation="true" ngf-stop-propagation="true"\r' + "\n" + "	>\r" + "\n" + '	<div class="topinfo" ng-transclude\r' + "\n" + '		ngf-select ngf-select-disabled="!selectable"\r' + "\n" + '		ngf-multiple="allowMultiple" ngf-accept="\'{{ allowedExtensions }}\'"\r' + "\n" + '		ngf-change="onChanges($files, $file, $newFiles, $duplicateFiles, $invalidFiles, $event)"\r' + "\n" + '		ngf-fix-orientation="true" ngf-stop-propagation="true"\r' + "\n" + "		></div>\r" + "\n" + "	<ul>\r" + "\n" + '		<li class="file" movable="orderable" data-index="$index" ng-class="{\'error\': file.error}" ng-repeat="file in files">\r' + "\n" + '			<div ng-show="orderable && files.length > 1" class="grip">\r' + "\n" + '				<div class="desktop"></div>\r' + "\n" + '				<div class="mobile">\r' + "\n" + '					<div class="up" ng-click="reorder($index, $index - 1, $event)"></div>\r' + "\n" + '					<div class="down" ng-click="reorder($index, $index + 1, $event)"></div>\r' + "\n" + "				</div>\r" + "\n" + "			</div>\r" + "\n" + '			<div ng-show="file.$thumbnailable" class="thumbnail">\r' + "\n" + '				<img src="{{ file.$thumbnail }}" alt="thumbnail {{ file.name }}" />\r' + "\n" + "			</div>\r" + "\n" + '			<div ng-show="file.$cropable" class="resize" ng-click="crop($event, file)"></div>\r' + "\n" + '			<div ng-show="(file.progress.status === UPLOAD_COMPLETE || file.progress.status === UPLOAD_OLD) && fileDownloadLink" class="name" ><a target="_blank" href="{{ fileDownloadLink(file.name) }}">{{ file.name }}</a></div>\r' + "\n" + '			<div ng-show="!((file.progress.status === UPLOAD_COMPLETE || file.progress.status === UPLOAD_OLD) && fileDownloadLink)" class="name">{{ file.name }}</div>\r' + "\n" + '			<!-- <div class="size">{{ fileRenderSizeCB(file.size) }}</div> -->\r' + "\n" + '			<div class="error" ng-show="file.error" title="{{ file.error }}">{{ file.error }}</div>\r' + "\n" + '			<div class="progression" ng-show="!file.error" >\r' + "\n" + '				<progress min="0" value="{{ file.progress.value }}" max="100"></progress>\r' + "\n" + "				<span>{{ fileOnProgressCB(file.name, file.progress.status, file.progress.value) }}</span>\r" + "\n" + "			</div>\r" + "\n" + '			<div class="delete" ng-click="cancel($index, $event)"></div>\r' + "\n" + "		</li>\r" + "\n" + "	</ul>\r" + "\n" + "</div>\r" + "\n");
 } ]);
 //# sourceMappingURL=multiupload.js.map

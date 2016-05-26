@@ -23,7 +23,8 @@
 				<img src="{{ file.$thumbnail }}" alt="thumbnail {{ file.name }}" />
 			</div>
 			<div ng-show="file.$cropable" class="resize" ng-click="crop($event, file)"></div>
-			<div class="name">{{ file.name }}</div>
+			<div ng-show="(file.progress.status === UPLOAD_COMPLETE || file.progress.status === UPLOAD_OLD) && fileDownloadLink" class="name" ><a target="_blank" href="{{ fileDownloadLink(file.name) }}">{{ file.name }}</a></div>
+			<div ng-show="!((file.progress.status === UPLOAD_COMPLETE || file.progress.status === UPLOAD_OLD) && fileDownloadLink)" class="name">{{ file.name }}</div>
 			<!-- <div class="size">{{ fileRenderSizeCB(file.size) }}</div> -->
 			<div class="error" ng-show="file.error" title="{{ file.error }}">{{ file.error }}</div>
 			<div class="progression" ng-show="!file.error" >

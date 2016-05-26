@@ -96,7 +96,6 @@ var allowed_rules = {
 	}
 };
 
-
 angular.module('multiUpload', ['ngFileUpload']);
 
 angular.module('multiUpload')
@@ -110,11 +109,12 @@ angular.module('multiUpload')
 			files:              '=filesList',
 			validRules:         '=',
 
-			fileOnUploadEndCB:  '=fileOnUploadEnd',
-			fileGetFullPathCB:  '=fileGetfullpath',
-			fileOnCancelCB:     '=fileOncancel',
-			fileRenderSizeCB:   '=fileRenderSize',
-			fileOnProgressCB:   '=fileOnprogress',
+			fileDownloadLink:    '=?fileDownloadLink',
+			_fileOnUploadEndCB:  '=fileOnUploadEnd',
+			_fileGetFullpathCB:  '=fileGetfullpath',
+			_fileOnCancelCB:     '=fileOncancel',
+			_fileRenderSizeCB:   '=fileRenderSize',
+			_fileOnProgressCB:   '=fileOnprogress',
 			fileUploadError:    '@',
 			fileExtensionError: '@',
 
@@ -130,16 +130,10 @@ angular.module('multiUpload')
 			if (angular.isUndefined(scope.url))
 				throw 'url parameter is missing and is required.';
 
-			scope.dropable       = 'dropable'      in attrs;
-			scope.orderable      = 'orderable'     in attrs;
-			scope.selectable     = 'selectable'    in attrs;
-			scope.allowMultiple  = 'multiple'      in attrs;
-
-			scope.simultaneousMax = scope.simultaneousMax ? scope.simultaneousMax : 999;
-			scope.fileOnUploadEndCB = angular.isFunction(scope.fileOnUploadEndCB) ? scope.fileOnUploadEndCB : function(file, http_code, response) {};
-			scope.fileGetFullPathCB = angular.isFunction(scope.fileGetFullPathCB) ? scope.fileGetFullPathCB : function(path) { return path; };
-			scope.fileRenderSizeCB  = angular.isFunction(scope.fileRenderSizeCB) ? scope.fileRenderSizeCB : function(size) { return size + 'o'; };
-			scope.fileOnProgressCB  = angular.isFunction(scope.fileOnProgressCB) ? scope.fileOnProgressCB : function(source, status, percentil) { return status + ': ' + percentil + '%'; };
+			scope.dropable          = 'dropable'      in attrs;
+			scope.orderable         = 'orderable'     in attrs;
+			scope.selectable        = 'selectable'    in attrs;
+			scope.allowMultiple     = 'multiple'      in attrs;
 		},
 		controller: ['$scope', 'Upload', function($scope, Upload) {
 
@@ -151,6 +145,13 @@ angular.module('multiUpload')
 
 			$scope.simultaneousCur = 0;
 			$scope.allowedExtensions = '';
+			$scope.simultaneousMax   = $scope.simultaneousMax ? $scope.simultaneousMax : 999;
+
+			$scope.fileOnUploadEndCB = angular.isFunction($scope._fileOnUploadEndCB) ? $scope._fileOnUploadEndCB : function(file, http_code, response) {};
+			$scope.fileGetFullpathCB = angular.isFunction($scope._fileGetFullpathCB) ? $scope._fileGetFullpathCB : function(path) { return path; };
+			$scope.fileOnCancelCB    = angular.isFunction($scope._fileOnCancelCB)    ? $scope._fileOnCancelCB    : function(file, http_code, response) {};
+			$scope.fileRenderSizeCB  = angular.isFunction($scope._fileRenderSizeCB)  ? $scope._fileRenderSizeCB  : function(size) { return size + 'o'; };
+			$scope.fileOnProgressCB  = angular.isFunction($scope._fileOnProgressCB)  ? $scope._fileOnProgressCB  : function(source, status, percentil) { return status + ': ' + percentil + '%'; };
 
 			var rules = null;
 
@@ -222,6 +223,10 @@ angular.module('multiUpload')
 				delete file.error;
 				var file_rules = getRulesForFileExtension(file.$extension);
 
+				if (!file_rules) {
+					file.error = $scope.fileExtensionError;
+					return -1;
+				}
 				for (var rule in file_rules)
 					if (file_rules.hasOwnProperty(rule))
 						if (allowed_rules[rule](file, files_same_ext, file_rules[rule]) !== true) {
@@ -381,7 +386,7 @@ angular.module('multiUpload')
 
 					if (already_uploaded) {
 						updateProgress(file_obj, $scope.UPLOAD_OLD, 100);
-						file_obj.$source_url = $scope.fileGetFullPathCB(file_obj.name);
+						file_obj.$source_url = $scope.fileGetFullpathCB(file_obj.name);
 					} else {
 						updateProgress(file_obj, $scope.UPLOAD_PENDING, 0);
 						file_obj.$source_file = file;
