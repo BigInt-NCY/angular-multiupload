@@ -19,10 +19,10 @@
 					<div class="down" ng-click="reorder($index, $index + 1, $event)"></div>
 				</div>
 			</div>
-			<!-- <div ng-show="file.thumbnailable" class="thumbnail">
-				<img src="{{ file.thumbnail }}" alt="thumbnail {{ file.name }}" />
-			</div> -->
-			<!-- <div ng-show="file.cropable" class="resize" ng-click="crop($event, file)"></div> -->
+			<div ng-show="file.$thumbnailable" class="thumbnail">
+				<img src="{{ file.$thumbnail }}" alt="thumbnail {{ file.name }}" />
+			</div>
+			<div ng-show="file.$cropable" class="resize" ng-click="crop($event, file)"></div>
 			<div class="name">{{ file.name }}</div>
 			<!-- <div class="size">{{ fileRenderSizeCB(file.size) }}</div> -->
 			<div class="error" ng-show="file.error" title="{{ file.error }}">{{ file.error }}</div>

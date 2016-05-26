@@ -112,6 +112,7 @@ $file-height: 50px;
 		}
 
 		.error {
+			color: $color-primary-normal;
 			text-align: center;
 			white-space: nowrap;
 		}
@@ -264,8 +265,4 @@ $file-height: 50px;
 			}
 		}
 	}
-}
-
-.error {
-	color: $color-primary-normal;
 }

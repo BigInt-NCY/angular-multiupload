@@ -1,16 +1,26 @@
 (function() {
 'use strict';
 
+function fileToDataURL(source, callback) {
+	var fileReader = new FileReader();
+	fileReader.onload = function(e) {
+		callback(e.target.result);
+	};
+	fileReader.readAsDataURL(source);
+}
+
 var allowed_rules = {
-	crop: function(file, files, rule, update_file) {
-		if (file && update_file)
-			file.$cropable = true;
+	crop: function(file, files, rule) {
+		if (!file)
+			return false;
+
+		file.$cropable = true;
 		return true;
 	},
-	count: function(file, files, rule, update_file) {
+	count: function(file, files, rule) {
 		var failed = false;
 		var ret = true;
-		var file_length = file && update_file ? files.length + 1 : files.length;
+		var file_length = file ? files.length + 1 : files.length;
 		var limit = rule.limit;
 		var min_limit;
 		var max_limit;
@@ -49,29 +59,43 @@ var allowed_rules = {
 			failed = true;
 		}
 		if (failed) {
-			if (file && update_file)
-				file.error = rule.onError; // TODO
+			if (file)
+				file.error = rule.onError;
 			ret = false;
 		}
 		return ret;
 	},
-	thumbnail: function(file, files, rule, update_file) {
-		if (file && update_file)
-			file.$thumbnailable = true;
+	thumbnail: function(file, files, rule) {
+		if (!file)
+			return false;
+
+		file.$thumbnailable = true;
+		if (file.$crop && file.$crop.source_after_crop)
+			file.$thumbnail = file.$crop.source_after_crop;
+		else if (file.$source_url)
+			file.$thumbnail = file.$source_url;
+		else if (file.$source_file) {
+			if (rule && rule.limit !== true)
+				file.$thumbnail = rule.limit(file.$source_file, thumb.config);
+			else
+				fileToDataURL(file.$source_file, function(drawable) { file.$thumbnail = drawable; });
+		}
 		return true;
 	},
-	validator: function(file, files, rule, update_file) {
+	validator: function(file, files, rule) {
 		if (!file)
-			return true;
+			return false;
+
 		var errors = rule.limit(file);
 		if (errors.length > 0) {
-			if (file && update_file)
-				file.error = rule.onError; // TODO
+			if (file)
+				file.error = rule.onError;
 			return false;
 		}
 		return true;
 	}
 };
+
 
 angular.module('multiUpload', ['ngFileUpload']);
 
@@ -86,6 +110,7 @@ angular.module('multiUpload')
 			files:              '=filesList',
 			validRules:         '=',
 
+			fileOnUploadEndCB:  '=fileOnUploadEnd',
 			fileGetFullPathCB:  '=fileGetfullpath',
 			fileOnCancelCB:     '=fileOncancel',
 			fileRenderSizeCB:   '=fileRenderSize',
@@ -111,7 +136,7 @@ angular.module('multiUpload')
 			scope.allowMultiple  = 'multiple'      in attrs;
 
 			scope.simultaneousMax = scope.simultaneousMax ? scope.simultaneousMax : 999;
-
+			scope.fileOnUploadEndCB = angular.isFunction(scope.fileOnUploadEndCB) ? scope.fileOnUploadEndCB : function(file, http_code, response) {};
 			scope.fileGetFullPathCB = angular.isFunction(scope.fileGetFullPathCB) ? scope.fileGetFullPathCB : function(path) { return path; };
 			scope.fileRenderSizeCB  = angular.isFunction(scope.fileRenderSizeCB) ? scope.fileRenderSizeCB : function(size) { return size + 'o'; };
 			scope.fileOnProgressCB  = angular.isFunction(scope.fileOnProgressCB) ? scope.fileOnProgressCB : function(source, status, percentil) { return status + ': ' + percentil + '%'; };
@@ -127,32 +152,7 @@ angular.module('multiUpload')
 			$scope.simultaneousCur = 0;
 			$scope.allowedExtensions = '';
 
-			// function fileToDataURL(source, callback) {
-			// 	var fileReader = new FileReader();
-			// 	fileReader.onload = function(e) {
-			// 		callback(e.target.result);
-			// 	};
-			// 	fileReader.readAsDataURL(source);
-			// }
-
 			var rules = null;
-			this.addRule = function(name, configs) {
-				if (!rules) {
-					rules = {};
-				}
-				if (Object.keys(configs).length === 0) {
-					throw 'Bad rules declaration : in ' + name + ' : zero rule defined\n';
-				} else {
-					angular.forEach(configs, function(value, config) {
-						if (config in allowed_rules) {
-							rules[name] = configs;
-						} else {
-							throw 'Bad rule declaration : in ' + name + ' : unknown rule ' + config + '\n';
-						}
-					});
-				}
-				$scope.allowedExtensions += ($scope.allowedExtensions === '' ? '' : ',') + name;
-			};
 
 			function getRulesForFileExtension(file_extension) {
 				var ret;
@@ -220,72 +220,54 @@ angular.module('multiUpload')
 				file.error = true;
 				var files_same_ext = getFilesMatchingRuleExtensions(file_rules_ext, true, files_list);
 				delete file.error;
-				var rules = getRulesForFileExtension(file.$extension);
+				var file_rules = getRulesForFileExtension(file.$extension);
 
-				var ret = 0;
-				for (var rule in rules) {
-					if (rules.hasOwnProperty(rule)) {
-						if (allowed_rules[rule](file, files_same_ext, rules[rule], true) !== true) {
+				for (var rule in file_rules)
+					if (file_rules.hasOwnProperty(rule))
+						if (allowed_rules[rule](file, files_same_ext, file_rules[rule]) !== true) {
 							if (!strict && !file.error)
-								ret = 1;
+								return 1;
 							else if (!strict && file.error)
-								ret = -1;
+								return -1;
 							else
-								ret = -1;
-							break;
+								return -1;
 						}
-					}
-				}
 
-				return ret;
+				return 0;
 			}
 
-			// // TODO function isFilesObservingRules(files_list) {
-			// 	if (!rules)
-			// 		return true;
-			//
-			// 	var i;
-			//
-			// 	for (var ruleExts in rules) {
-			// 		if (rules.hasOwnProperty(ruleExts)) {
-			// 			var files = $scope.getFilesMatchingRuleExtensions(ruleExts, files_list, false);
-			// 			for (var rule in rules[ruleExts])
-			// 				if (rules[ruleExts].hasOwnProperty(rule)) {
-			// 					if (files.length === 0) {
-			// 						if (allowed_rules[rule](null, [], rules[ruleExts][rule], false) !== true)
-			// 							return false;
-			// 					} else
-			// 						for (i = 0; i < files.length; i++)
-			// 							if (allowed_rules[rule](files[i], files, rules[ruleExts][rule], false) !== true)
-			// 								return false;
-			// 				}
-			// 		}
-			// 	}
-			//
-			// 	var list = $scope.files;
-			// 	if (files_list) {
-			// 		list = files_list;
-			// 	}
-			// 	var nb_respect = 0;
-			// 	for (i = 0; i < list.length; i++) {
-			// 		for (var extensions in rules) {
-			// 			if (rules.hasOwnProperty(extensions)) {
-			// 				var exts = extensions.split(',');
-			// 				if (exts.indexOf(list[i].extension) !== -1){
-			// 					nb_respect++;
-			// 				}
-			// 			}
-			// 		}
-			// 	}
-			// 	if (nb_respect !== list.length)
-			// 		return false;
-			//
-			// 	return true;
-			// }
-			//
-			// // TODO factory ou je ne sais quoi, how ?
-			// if ($scope.validRules)
-			// 	$scope.validRules.run = isFilesFollowingRules;
+			function isFilesObservingRules(files_list, strict) {
+				files_list = files_list ? files_list : $scope.files;
+				strict = strict ? strict : false;
+
+				for (var i = 0; i < files_list.length; i++) {
+					var ret = isFileObservingRules(files_list[i], files_list, strict);
+					if (strict && ret !== 0)
+						return false;
+					else if (ret === -1)
+						return false;
+				}
+				return true;
+			}
+
+			this.addRule = function(name, configs) {
+				if (!rules) {
+					rules = {};
+				}
+				if (Object.keys(configs).length === 0) {
+					throw 'Bad rules declaration : in ' + name + ' : zero rule defined\n';
+				} else {
+					angular.forEach(configs, function(value, config) {
+						if (config in allowed_rules) {
+							rules[name] = configs;
+						} else {
+							throw 'Bad rule declaration : in ' + name + ' : unknown rule ' + config + '\n';
+						}
+					});
+				}
+				$scope.allowedExtensions += ($scope.allowedExtensions === '' ? '' : ',') + name;
+				isFilesObservingRules();
+			};
 
 			$scope.reorder = function(pos_old, pos_new, event) {
 				if (event)
@@ -298,37 +280,37 @@ angular.module('multiUpload')
 			};
 			this.reorder = $scope.reorder;
 
-			// TODO
-			$scope.crop = function(event, file) {
-				// event.stopPropagation();
-				// var crop = getRulesForFileExtension(file.$extension).crop;
-				// fileToDataURL(file, function(drawable) {
-				// 	crop.limit(drawable, file.$crop, function(result, drawable){
-				// 		if (result === true) {
-				// 			$scope.thumbnail(file, drawable, true);
-				// 		} else {
-				// 			$scope.thumbnail(file, file.$source_file);
-				// 		}
-				// 	});
-				// });
-			};
+			function onCropFinish(file, result, drawable, bounds, reset) {
+				if (result === true)
+					if (reset)
+						delete file.$crop;
+					else {
+						file.$crop.source_after_crop = drawable;
+						file.$crop.bounds = bounds;
+					}
 
-			// TODO
-			$scope.thumbnail = function(file, source, is_drawable) {
-				//
-				// if (is_drawable) {
-				// 	file.$thumbnail = source;
-				// 	return;
-				// }
-				//
-				// var thumb = getRulesForFileExtension(file.extension).thumbnail;
-				// if (thumb && thumb.limit !== true) {
-				// 	file.$thumbnail = thumb.limit(source, thumb.config);
-				// } else {
-				// 	fileToDataURL(file, function(drawable) {
-				// 		file.$thumbnail = drawable;
-				// 	});
-				// }
+				if (file.$thumbnailable)
+					allowed_rules.thumbnail(file, null, null);
+			}
+
+			$scope.crop = function(event, file) {
+				if (event)
+					event.stopPropagation();
+
+				file.$crop = file.$crop ? file.$crop : { bounds: { top: 0, bottom: 0, left: 0, right: 0 } };
+		
+				var file_rules = getRulesForFileExtension(file.$extension);
+				if (!file_rules.crop)
+					return ;
+
+				if (file.$source_file)
+					fileToDataURL(file.$source_file, function(drawable) {
+						file_rules.crop.limit(drawable, file, file.$crop.bounds, onCropFinish);
+					});
+				else if (file.$source_url)
+					file_rules.crop.limit(file.$source_url, file, file.$crop.bounds, onCropFinish);
+				else
+					console.error('unable to find source for crop');
 			};
 
 			function updateProgress(file, status, value) {
@@ -352,31 +334,28 @@ angular.module('multiUpload')
 						if (isFileObservingRules(file) === 0)
 							delete file.error;
 
-					if (file.$thumbnailable && !file.$thumbnail) // TODO
-						$scope.thumbnail(file, file.source);
-
 					// if we dont reach limit for simultaneous upload and file is waiting to be uploaded (have a source, have good status, no errors, ...)
 					if ($scope.simultaneousCur < $scope.simultaneousMax && file.progress.status === $scope.UPLOAD_PENDING && !file.error && file.$source_file) {
 						updateProgress(file, $scope.UPLOAD_TRANSFERING, 0);
 						$scope.simultaneousCur++;
 
 						var data = {};
-						data[$scope.multipart ? (angular.isFunction(scope.multipartName) ? scope.multipartName(file.name) : scope.multipartName) : 'key'] = file.$source_file;
+						data[$scope.multipartName ? (angular.isFunction($scope.multipartName) ? $scope.multipartName(file.name) : $scope.multipartName) : 'key'] = file.$source_file;
 
 						// store the promise for cancel upload if we want
 						file.$upload = Upload.upload({
-							url: angular.isFunction($scope.multipartName) ? $scope.url(file.name) : $scope.url,
+							url: angular.isFunction($scope.url) ? $scope.url(file.name) : $scope.url,
 							data: data,
 							method: $scope.method
 						}).then(function (resp) { // ON UPLOAD COMPLETE
 							updateProgress(file, $scope.UPLOAD_COMPLETE, 100);
 							$scope.simultaneousCur--;
-							//callback(file, resp.status, resp.data);
+							$scope.fileOnUploadEndCB(file, resp.status, resp.data);
 						}, function (resp) { // ON UPLOAD ERROR
 							updateProgress(file, $scope.UPLOAD_ERROR, 0);
 							updateError(file, $scope.fileUploadError || 'upload error');
 							$scope.simultaneousCur--;
-						}, function (evt) {
+						}, function (evt) { // ON UPLOAD TRANSFER PROGRESS
 							updateProgress(file, $scope.UPLOAD_TRANSFERING, parseInt(100 * evt.loaded / evt.total));
 						});
 					}
@@ -384,10 +363,8 @@ angular.module('multiUpload')
 			}
 
 			function addToFilesList(files, already_uploaded) {
-
-				if (!files || !files.length) {
+				if (!files || !files.length)
 					return ;
-				}
 
 				angular.forEach(files, function(file) {
 					if (!file.name) {
@@ -401,7 +378,7 @@ angular.module('multiUpload')
 						error: true,
 						$extension: extension,
 					};
-					
+
 					if (already_uploaded) {
 						updateProgress(file_obj, $scope.UPLOAD_OLD, 100);
 						file_obj.$source_url = $scope.fileGetFullPathCB(file_obj.name);
@@ -409,23 +386,6 @@ angular.module('multiUpload')
 						updateProgress(file_obj, $scope.UPLOAD_PENDING, 0);
 						file_obj.$source_file = file;
 					}
-
-					// var file_obj = {
-					// 	source: file,name: file.name, extension: extension,
-					// 	size: file.size, type: file.type, lastModified: file.lastModified,
-					// 	progress: { value: 0, status: $scope.PENDING, message: '' },
-					// 	error: { failed: true, reason: [] },
-					// 	thumbnail: null,
-					// 	thumbnailable: false,
-					// 	crop: {
-					// 		bounds: { left: 0, right: 0, top: 0, bottom: 0 },
-					// 		drawable: null,
-					// 	},
-					// 	cropable: false,
-					// 	_upload: null,
-					// 	upload: { code: 0, data: null },
-					// };
-
 
 					$scope.files.push(file_obj);
 				});
