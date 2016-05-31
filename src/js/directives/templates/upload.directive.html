@@ -20,7 +20,7 @@
 				</div>
 			</div>
 			<div ng-show="file.$thumbnailable" class="thumbnail">
-				<img src="{{ file.$thumbnail }}" alt="thumbnail {{ file.name }}" />
+				<img data-ng-src="{{ file.$thumbnail }}" alt="thumbnail {{ file.name }}" />
 			</div>
 			<div ng-show="file.$cropable" class="resize" ng-click="crop($event, file)"></div>
 			<div ng-show="(file.progress.status === UPLOAD_COMPLETE || file.progress.status === UPLOAD_OLD) && fileDownloadLink" class="name" ><a target="_blank" href="{{ fileDownloadLink(file) }}">{{ file.name }}</a></div>
