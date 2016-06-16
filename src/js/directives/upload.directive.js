@@ -147,7 +147,7 @@ angular.module('multiUpload')
 			$scope.simultaneousMax   = $scope.simultaneousMax ? $scope.simultaneousMax : 999;
 
 			$scope.fileOnUploadEndCB = angular.isFunction($scope._fileOnUploadEndCB) ? $scope._fileOnUploadEndCB : function(file, http_code, response) {};
-			$scope.fileUploadError   = angular.isFunction($scope._fileUploadError)   ? $scope._fileUploadError   : function(file, http_code, response) { return 'upload error' };
+			$scope.fileUploadError   = angular.isFunction($scope._fileUploadError)   ? $scope._fileUploadError   : function(file, http_code, response) { return 'upload error'; };
 			$scope.fileDownloadLink  = angular.isFunction($scope._fileDownloadLink)  ? $scope._fileDownloadLink  : function(file) { return file.name; };
 			$scope.fileOnCancelCB    = angular.isFunction($scope._fileOnCancelCB)    ? $scope._fileOnCancelCB    : function(file, http_code, response) {};
 			$scope.fileRenderSizeCB  = angular.isFunction($scope._fileRenderSizeCB)  ? $scope._fileRenderSizeCB  : function(size) { return size + 'o'; };
