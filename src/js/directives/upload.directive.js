@@ -114,7 +114,7 @@ angular.module('multiUpload')
 			_fileOnCancelCB:     '=fileOncancel',
 			_fileRenderSizeCB:   '=fileRenderSize',
 			_fileOnProgressCB:   '=fileOnprogress',
-			fileUploadError:    '@',
+			_fileUploadError:    '=fileUploadError',
 			fileExtensionError: '@',
 
 			simultaneousMax:    '@simultaneous',
@@ -147,7 +147,8 @@ angular.module('multiUpload')
 			$scope.simultaneousMax   = $scope.simultaneousMax ? $scope.simultaneousMax : 999;
 
 			$scope.fileOnUploadEndCB = angular.isFunction($scope._fileOnUploadEndCB) ? $scope._fileOnUploadEndCB : function(file, http_code, response) {};
-			$scope.fileDownloadLink  = angular.isFunction($scope._fileDownloadLink) ? $scope._fileDownloadLink   : function(file) { return file.name; };
+			$scope.fileUploadError   = angular.isFunction($scope._fileUploadError)   ? $scope._fileUploadError   : function(file, http_code, response) { return 'upload error' };
+			$scope.fileDownloadLink  = angular.isFunction($scope._fileDownloadLink)  ? $scope._fileDownloadLink  : function(file) { return file.name; };
 			$scope.fileOnCancelCB    = angular.isFunction($scope._fileOnCancelCB)    ? $scope._fileOnCancelCB    : function(file, http_code, response) {};
 			$scope.fileRenderSizeCB  = angular.isFunction($scope._fileRenderSizeCB)  ? $scope._fileRenderSizeCB  : function(size) { return size + 'o'; };
 			$scope.fileOnProgressCB  = angular.isFunction($scope._fileOnProgressCB)  ? $scope._fileOnProgressCB  : function(file, status, percentil) { return status + ': ' + percentil + '%'; };
@@ -156,11 +157,11 @@ angular.module('multiUpload')
 
 			function getRulesForFileExtension(file_extension) {
 				var ret;
-			
+
 				if (!rules || Object.keys(rules).length === 0) {
 					return ret;
 				}
-			
+
 				ret = null;
 				for (var extensions in rules)
 					if (rules.hasOwnProperty(extensions)) {
@@ -170,7 +171,7 @@ angular.module('multiUpload')
 						if (ret !== null)
 							break;
 					}
-			
+
 				return ret;
 			}
 
@@ -357,7 +358,7 @@ angular.module('multiUpload')
 							$scope.fileOnUploadEndCB(file, resp.status, resp.data);
 						}, function (resp) { // ON UPLOAD ERROR
 							updateProgress(file, $scope.UPLOAD_ERROR, 0);
-							updateError(file, $scope.fileUploadError || 'upload error');
+							updateError(file, $scope.fileUploadError(file, resp.status, resp.data));
 							$scope.simultaneousCur--;
 						}, function (evt) { // ON UPLOAD TRANSFER PROGRESS
 							updateProgress(file, $scope.UPLOAD_TRANSFERING, parseInt(100 * evt.loaded / evt.total));
