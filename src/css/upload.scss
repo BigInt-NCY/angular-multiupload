@@ -49,14 +49,12 @@ $file-height: 50px;
 		flex-direction: row;
 		height: $file-height;
 		justify-content: space-between;
-		line-height: $file-height;
 
 		&:nth-last-child(1) {
 			border: 0;
 		}
 
 		.name {
-			height: 100%;
 			overflow: hidden;
 			padding: 0 10px;
 			text-align: left;
@@ -66,7 +64,6 @@ $file-height: 50px;
 		}
 
 		.size {
-			height: 100%;
 			overflow: hidden;
 			padding: 0 10px;
 			text-align: right;
@@ -114,7 +111,6 @@ $file-height: 50px;
 		.error {
 			color: $color-primary-normal;
 			text-align: center;
-			white-space: nowrap;
 		}
 
 		.grip {
@@ -247,6 +243,7 @@ $file-height: 50px;
 		.delete {
 			cursor: pointer;
 			height: 100%;
+			line-height: $file-height;
 			padding: 0 10px;
 			width: 25px;
 
